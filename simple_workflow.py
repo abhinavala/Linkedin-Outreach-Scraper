@@ -163,26 +163,37 @@ class SimpleLinkedInWorkflow:
             for company in companies:
                 self.logger.info(f"Processing company: {company}")
                 
-                # Use the new alumni-specific search method
-                # This will look for "X people from your company were hired here" and click it
-                people_data = self.linkedin_scraper.search_company_alumni(company)
-                
-                if people_data:
-                    all_people_data.extend(people_data)
-                    self.logger.info(f"Processed {len(people_data)} SCU alumni from {company}")
-                else:
-                    self.logger.warning(f"No SCU alumni found for company: {company}")
+                try:
+                    # Use the new alumni-specific search method
+                    # This will look for "X people from your company were hired here" and click it
+                    people_data = self.linkedin_scraper.search_company_alumni(company)
                     
-                    # Fallback: try generic search if alumni search fails
-                    self.logger.info(f"Trying fallback generic search for {company}")
-                    fallback_data = self.linkedin_scraper.search_people_by_company(company)
-                    if fallback_data:
-                        # Mark fallback data as SCU alumni too since we're looking for SCU alumni
-                        for person in fallback_data:
-                            person['is_scu_alumni'] = True
-                            person['company'] = company
-                        all_people_data.extend(fallback_data)
-                        self.logger.info(f"Fallback found {len(fallback_data)} people from {company}")
+                    if people_data:
+                        all_people_data.extend(people_data)
+                        self.logger.info(f"Processed {len(people_data)} SCU alumni from {company}")
+                    else:
+                        self.logger.warning(f"No SCU alumni found for company: {company}")
+                        
+                        # Fallback: try generic search if alumni search fails
+                        self.logger.info(f"Trying fallback generic search for {company}")
+                        try:
+                            fallback_data = self.linkedin_scraper.search_people_by_company(company)
+                            if fallback_data:
+                                # Mark fallback data as SCU alumni too since we're looking for SCU alumni
+                                for person in fallback_data:
+                                    person['is_scu_alumni'] = True
+                                    person['company'] = company
+                                all_people_data.extend(fallback_data)
+                                self.logger.info(f"Fallback found {len(fallback_data)} people from {company}")
+                            else:
+                                self.logger.warning(f"No results found for {company}, skipping...")
+                        except Exception as fallback_error:
+                            self.logger.error(f"Fallback search failed for {company}: {str(fallback_error)}")
+                            self.logger.info(f"Skipping {company} and moving to next company...")
+                
+                except Exception as e:
+                    self.logger.error(f"Error processing {company}: {str(e)}")
+                    self.logger.info(f"Skipping {company} and moving to next company...")
                 
                 # Add delay between companies to avoid rate limiting
                 time.sleep(5)
